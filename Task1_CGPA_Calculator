@@ -1,0 +1,112 @@
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <string>
+using namespace std;
+
+double getGradePoint(string grade)
+{
+    if (grade == "A+" || grade == "A") return 4.0;
+    else if (grade == "A-") return 3.7;
+    else if (grade == "B+") return 3.3;
+    else if (grade == "B") return 3.0;
+    else if (grade == "B-") return 2.7;
+    else if (grade == "C+") return 2.3;
+    else if (grade == "C") return 2.0;
+    else if (grade == "C-") return 1.7;
+    else if (grade == "D") return 1.0;
+    else return 0.0;
+}
+
+int main()
+{
+    string studentName, semester;
+    int courses;
+    double totalCredits = 0, totalGradePoints = 0;
+
+    cout << "=====================================\n";
+    cout << "        CODEALPHA CGPA CALCULATOR\n";
+    cout << "=====================================\n";
+
+    cout << "Enter Student Name: ";
+    getline(cin, studentName);
+
+    cout << "Enter Semester: ";
+    getline(cin, semester);
+
+    cout << "Enter Number of Courses: ";
+    cin >> courses;
+
+    string courseName[50], grade[50];
+    double creditHours[50], gradePoint[50], qualityPoints[50];
+
+    for (int i = 0; i < courses; i++)
+    {
+        cout << "\nCourse " << i + 1 << endl;
+
+        cout << "Enter Course Name: ";
+        cin >> courseName[i];
+
+        cout << "Enter Grade (A+, A, A-, B+, B, B-, C+, C, C-, D, F): ";
+        cin >> grade[i];
+
+        cout << "Enter Credit Hours: ";
+        cin >> creditHours[i];
+
+        gradePoint[i] = getGradePoint(grade[i]);
+        qualityPoints[i] = gradePoint[i] * creditHours[i];
+
+        totalCredits += creditHours[i];
+        totalGradePoints += qualityPoints[i];
+    }
+
+    double cgpa = totalGradePoints / totalCredits;
+
+    cout << "\n\n============= RESULT =============\n";
+    cout << "Student Name: " << studentName << endl;
+    cout << "Semester: " << semester << endl;
+
+    cout << left << setw(20) << "Course"
+         << setw(10) << "Grade"
+         << setw(10) << "Credits"
+         << setw(15) << "Grade Point"
+         << setw(15) << "Quality Points" << endl;
+
+    for (int i = 0; i < courses; i++)
+    {
+        cout << left << setw(20) << courseName[i]
+             << setw(10) << grade[i]
+             << setw(10) << creditHours[i]
+             << setw(15) << gradePoint[i]
+             << setw(15) << qualityPoints[i] << endl;
+    }
+
+    cout << "\nTotal Credits: " << totalCredits;
+    cout << "\nTotal Grade Points: " << totalGradePoints;
+    cout << "\nFinal CGPA: " << fixed << setprecision(2) << cgpa << endl;
+
+    if (cgpa >= 3.5)
+        cout << "Performance: Excellent\n";
+    else if (cgpa >= 3.0)
+        cout << "Performance: Very Good\n";
+    else if (cgpa >= 2.5)
+        cout << "Performance: Good\n";
+    else
+        cout << "Performance: Needs Improvement\n";
+
+    ofstream file("CGPA_Report.txt");
+
+    file << "CODEALPHA CGPA CALCULATOR REPORT\n";
+    file << "Student Name: " << studentName << endl;
+    file << "Semester: " << semester << endl;
+    file << "Final CGPA: " << fixed << setprecision(2) << cgpa << endl;
+    file << "Total Credits: " << totalCredits << endl;
+    file << "Total Grade Points: " << totalGradePoints << endl;
+
+    file.close();
+
+    cout << "\nReport saved successfully in CGPA_Report.txt\n";
+    cout << "=====================================\n";
+
+    return 0;
+}
