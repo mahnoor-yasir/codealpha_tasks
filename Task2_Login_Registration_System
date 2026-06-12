@@ -1,0 +1,363 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <conio.h>
+#include <limits>
+using namespace std;
+
+string trim(string s)
+{
+    while (!s.empty() && s[0] == ' ')
+        s.erase(0, 1);
+
+    while (!s.empty() && s[s.length() - 1] == ' ')
+        s.erase(s.length() - 1, 1);
+
+    return s;
+}
+
+string toLowerCase(string s)
+{
+    for (int i = 0; i < s.length(); i++)
+    {
+        if (s[i] >= 'A' && s[i] <= 'Z')
+            s[i] = s[i] + 32;
+    }
+    return s;
+}
+
+int getValidChoice()
+{
+    int choice;
+
+    while (true)
+    {
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        if (cin.fail())
+        {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            cout << "Invalid input! Please enter a number only.\n";
+        }
+        else
+        {
+            cin.ignore(1000, '\n');
+            return choice;
+        }
+    }
+}
+
+string getHiddenPassword()
+{
+    string password = "";
+    char ch;
+
+    while (true)
+    {
+        ch = getch();
+
+        if (ch == 13)
+            break;
+        else if (ch == 8)
+        {
+            if (!password.empty())
+            {
+                password.erase(password.length() - 1);
+                cout << "\b \b";
+            }
+        }
+        else
+        {
+            password += ch;
+            cout << "*";
+        }
+    }
+
+    return password;
+}
+
+string hashPassword(string password)
+{
+    unsigned long hash = 5381;
+
+    for (int i = 0; i < password.length(); i++)
+    {
+        hash = ((hash << 5) + hash) + password[i];
+    }
+
+    stringstream ss;
+    ss << hash;
+    return ss.str();
+}
+
+bool isUsernameValid(string username)
+{
+    if (username.length() < 3)
+        return false;
+
+    for (int i = 0; i < username.length(); i++)
+    {
+        if (username[i] == ' ')
+            return false;
+    }
+
+    return true;
+}
+
+bool isStrongPassword(string password)
+{
+    bool upper = false, lower = false, digit = false, special = false;
+
+    if (password.length() < 8)
+        return false;
+
+    for (int i = 0; i < password.length(); i++)
+    {
+        if (password[i] >= 'A' && password[i] <= 'Z')
+            upper = true;
+        else if (password[i] >= 'a' && password[i] <= 'z')
+            lower = true;
+        else if (password[i] >= '0' && password[i] <= '9')
+            digit = true;
+        else
+            special = true;
+    }
+
+    return upper && lower && digit && special;
+}
+
+bool usernameExists(string username)
+{
+    ifstream file("users.txt");
+    string line;
+
+    while (getline(file, line))
+    {
+        stringstream ss(line);
+        string storedUsername;
+
+        getline(ss, storedUsername, '|');
+
+        if (storedUsername == username)
+        {
+            file.close();
+            return true;
+        }
+    }
+
+    file.close();
+    return false;
+}
+
+void registerUser()
+{
+    string username, password, confirmPassword, securityAnswer;
+
+    cout << "\n========== USER REGISTRATION ==========\n";
+
+    cout << "Enter Username: ";
+    getline(cin, username);
+    username = trim(username);
+
+    if (!isUsernameValid(username))
+    {
+        cout << "Error: Username must be at least 3 characters and contain no spaces.\n";
+        return;
+    }
+
+    if (usernameExists(username))
+    {
+        cout << "Error: Username already exists. Try another username.\n";
+        return;
+    }
+
+    cout << "Enter Password: ";
+    password = getHiddenPassword();
+
+    if (!isStrongPassword(password))
+    {
+        cout << "\nError: Password must contain uppercase, lowercase, digit, special character and minimum 8 characters.\n";
+        return;
+    }
+
+    cout << "\nConfirm Password: ";
+    confirmPassword = getHiddenPassword();
+
+    if (password != confirmPassword)
+    {
+        cout << "\nError: Passwords do not match.\n";
+        return;
+    }
+
+    cout << "\nSecurity Question: What is your favorite color? ";
+    getline(cin, securityAnswer);
+    securityAnswer = toLowerCase(trim(securityAnswer));
+
+    ofstream file("users.txt", ios::app);
+
+    if (!file)
+    {
+        cout << "Error: File could not be opened.\n";
+        return;
+    }
+
+    file << username << "|" << hashPassword(password) << "|" << securityAnswer << endl;
+    file.close();
+
+    cout << "\nRegistration successful! Account created securely.\n";
+}
+
+void loginUser()
+{
+    string username, password;
+    bool loginSuccess = false;
+
+    cout << "\n=============== USER LOGIN ===============\n";
+
+    cout << "Enter Username: ";
+    getline(cin, username);
+    username = trim(username);
+
+    cout << "Enter Password: ";
+    password = getHiddenPassword();
+
+    string hashedPassword = hashPassword(password);
+
+    ifstream file("users.txt");
+
+    if (!file)
+    {
+        cout << "\nNo users found. Please register first.\n";
+        return;
+    }
+
+    string line;
+
+    while (getline(file, line))
+    {
+        stringstream ss(line);
+        string storedUsername, storedPassword, storedAnswer;
+
+        getline(ss, storedUsername, '|');
+        getline(ss, storedPassword, '|');
+        getline(ss, storedAnswer, '|');
+
+        if (storedUsername == username && storedPassword == hashedPassword)
+        {
+            loginSuccess = true;
+            break;
+        }
+    }
+
+    file.close();
+
+    if (loginSuccess)
+        cout << "\nLogin successful! Welcome, " << username << ".\n";
+    else
+        cout << "\nLogin failed! Invalid username or password.\n";
+}
+
+void forgotPassword()
+{
+    string username, answer;
+    bool found = false;
+
+    cout << "\n========== PASSWORD RECOVERY ==========\n";
+
+    cout << "Enter Username: ";
+    getline(cin, username);
+    username = trim(username);
+
+    ifstream file("users.txt");
+
+    if (!file)
+    {
+        cout << "No registered users found.\n";
+        return;
+    }
+
+    string line;
+
+    while (getline(file, line))
+    {
+        stringstream ss(line);
+        string storedUsername, storedPassword, storedAnswer;
+
+        getline(ss, storedUsername, '|');
+        getline(ss, storedPassword, '|');
+        getline(ss, storedAnswer, '|');
+
+        if (storedUsername == username)
+        {
+            found = true;
+
+            cout << "Security Question: What is your favorite color? ";
+            getline(cin, answer);
+            answer = toLowerCase(trim(answer));
+
+            if (answer == storedAnswer)
+            {
+                cout << "Account verified successfully.\n";
+                cout << "Your password is stored securely as a hash, so it cannot be displayed.\n";
+                cout << "Please register again with a new username or ask admin to reset password.\n";
+            }
+            else
+            {
+                cout << "Incorrect security answer.\n";
+            }
+
+            break;
+        }
+    }
+
+    file.close();
+
+    if (!found)
+        cout << "Username not found.\n";
+}
+
+int main()
+{
+    int choice;
+
+    do
+    {
+        cout << "\n==========================================\n";
+        cout << "       LOGIN REGISTRATION SYSTEM\n";
+        cout << "==========================================\n";
+        cout << "1. Register New User\n";
+        cout << "2. Login User\n";
+        cout << "3. Forgot Password\n";
+        cout << "4. Exit\n";
+
+        choice = getValidChoice();
+
+        switch (choice)
+        {
+        case 1:
+            registerUser();
+            break;
+
+        case 2:
+            loginUser();
+            break;
+
+        case 3:
+            forgotPassword();
+            break;
+
+        case 4:
+            cout << "Thank you for using the system.\n";
+            break;
+
+        default:
+            cout << "Invalid choice! Please enter 1, 2, 3, or 4.\n";
+        }
+
+    } while (choice != 4);
+
+    return 0;
+}
