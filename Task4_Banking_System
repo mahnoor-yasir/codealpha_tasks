@@ -1,0 +1,459 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <limits>
+using namespace std;
+
+class Transaction {
+public:
+    string type, details;
+    double amount;
+
+    Transaction(string t = "", double a = 0, string d = "") {
+        type = t;
+        amount = a;
+        details = d;
+    }
+
+    void display() {
+        cout << left << setw(18) << type
+             << setw(12) << amount
+             << details << endl;
+    }
+};
+
+class Customer {
+public:
+    int customerID;
+    string name, phone;
+
+    Customer(int id = 0, string n = "", string p = "") {
+        customerID = id;
+        name = n;
+        phone = p;
+    }
+};
+
+class Account {
+private:
+    int accountNumber;
+    Customer customer;
+    double balance;
+    vector<Transaction> history;
+
+public:
+    Account(int accNo = 0, Customer c = Customer(), double bal = 0) {
+        accountNumber = accNo;
+        customer = c;
+        balance = bal;
+    }
+
+    int getAccountNumber() {
+        return accountNumber;
+    }
+
+    double getBalance() {
+        return balance;
+    }
+
+    void deposit(double amount) {
+        if (amount <= 0) {
+            cout << "Invalid amount.\n";
+            return;
+        }
+
+        balance += amount;
+        history.push_back(Transaction("Deposit", amount, "Amount deposited successfully"));
+        cout << "Deposit successful.\n";
+    }
+
+    void withdraw(double amount) {
+        if (amount <= 0) {
+            cout << "Invalid amount.\n";
+            return;
+        }
+
+        if (amount > balance) {
+            cout << "Insufficient balance.\n";
+            return;
+        }
+
+        balance -= amount;
+        history.push_back(Transaction("Withdrawal", amount, "Amount withdrawn successfully"));
+        cout << "Withdrawal successful.\n";
+    }
+
+    void transfer(Account &receiver, double amount) {
+        if (amount <= 0) {
+            cout << "Invalid amount.\n";
+            return;
+        }
+
+        if (amount > balance) {
+            cout << "Insufficient balance.\n";
+            return;
+        }
+
+        balance -= amount;
+        receiver.balance += amount;
+
+        stringstream ss1, ss2;
+        ss1 << "Transferred to Account " << receiver.accountNumber;
+        ss2 << "Received from Account " << accountNumber;
+
+        history.push_back(Transaction("Transfer Sent", amount, ss1.str()));
+        receiver.history.push_back(Transaction("Transfer Received", amount, ss2.str()));
+
+        cout << "Fund transfer successful.\n";
+    }
+
+    void displayInfo() {
+        cout << "\n========== ACCOUNT INFORMATION ==========\n";
+        cout << "Account Number : " << accountNumber << endl;
+        cout << "Customer ID    : " << customer.customerID << endl;
+        cout << "Customer Name  : " << customer.name << endl;
+        cout << "Phone Number   : " << customer.phone << endl;
+        cout << "Balance        : Rs. " << fixed << setprecision(2) << balance << endl;
+    }
+
+    void displayTransactions() {
+        cout << "\n========== TRANSACTION HISTORY ==========\n";
+
+        if (history.empty()) {
+            cout << "No transactions found.\n";
+            return;
+        }
+
+        cout << left << setw(18) << "Type"
+             << setw(12) << "Amount"
+             << "Details" << endl;
+
+        cout << "--------------------------------------------------\n";
+
+        for (int i = 0; i < history.size(); i++) {
+            history[i].display();
+        }
+    }
+
+    string accountToFileString() {
+        stringstream ss;
+        ss << accountNumber << "|"
+           << customer.customerID << "|"
+           << customer.name << "|"
+           << customer.phone << "|"
+           << balance;
+        return ss.str();
+    }
+
+    string transactionsToFileString() {
+        stringstream ss;
+
+        for (int i = 0; i < history.size(); i++) {
+            ss << accountNumber << "|"
+               << history[i].type << "|"
+               << history[i].amount << "|"
+               << history[i].details << endl;
+        }
+
+        return ss.str();
+    }
+
+    void addTransaction(Transaction t) {
+        history.push_back(t);
+    }
+};
+
+int getValidInt(string message) {
+    int value;
+
+    while (true) {
+        cout << message;
+        cin >> value;
+
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            cout << "Invalid input! Please enter a number.\n";
+        } else {
+            cin.ignore(1000, '\n');
+            return value;
+        }
+    }
+}
+
+double getValidDouble(string message) {
+    double value;
+
+    while (true) {
+        cout << message;
+        cin >> value;
+
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            cout << "Invalid input! Please enter a valid amount.\n";
+        } else {
+            cin.ignore(1000, '\n');
+            return value;
+        }
+    }
+}
+
+Account* findAccount(vector<Account> &accounts, int accNo) {
+    for (int i = 0; i < accounts.size(); i++) {
+        if (accounts[i].getAccountNumber() == accNo) {
+            return &accounts[i];
+        }
+    }
+    return NULL;
+}
+
+void saveData(vector<Account> &accounts) {
+    ofstream accFile("accounts.txt");
+    ofstream transFile("transactions.txt");
+
+    for (int i = 0; i < accounts.size(); i++) {
+        accFile << accounts[i].accountToFileString() << endl;
+        transFile << accounts[i].transactionsToFileString();
+    }
+
+    accFile.close();
+    transFile.close();
+}
+
+void loadData(vector<Account> &accounts) {
+    ifstream accFile("accounts.txt");
+    string line;
+
+    while (getline(accFile, line)) {
+        stringstream ss(line);
+        string accNoStr, idStr, name, phone, balStr;
+
+        getline(ss, accNoStr, '|');
+        getline(ss, idStr, '|');
+        getline(ss, name, '|');
+        getline(ss, phone, '|');
+        getline(ss, balStr, '|');
+
+        int accNo, id;
+        double balance;
+
+        stringstream(accNoStr) >> accNo;
+        stringstream(idStr) >> id;
+        stringstream(balStr) >> balance;
+
+        Customer c(id, name, phone);
+        accounts.push_back(Account(accNo, c, balance));
+    }
+
+    accFile.close();
+
+    ifstream transFile("transactions.txt");
+
+    while (getline(transFile, line)) {
+        stringstream ss(line);
+        string accNoStr, type, amountStr, details;
+
+        getline(ss, accNoStr, '|');
+        getline(ss, type, '|');
+        getline(ss, amountStr, '|');
+        getline(ss, details, '|');
+
+        int accNo;
+        double amount;
+
+        stringstream(accNoStr) >> accNo;
+        stringstream(amountStr) >> amount;
+
+        Account *acc = findAccount(accounts, accNo);
+
+        if (acc != NULL) {
+            acc->addTransaction(Transaction(type, amount, details));
+        }
+    }
+
+    transFile.close();
+}
+
+void createAccount(vector<Account> &accounts) {
+    int accNo, customerID;
+    string name, phone;
+
+    cout << "\n========== CREATE ACCOUNT ==========\n";
+
+    accNo = getValidInt("Enter Account Number: ");
+
+    if (findAccount(accounts, accNo) != NULL) {
+        cout << "Account already exists.\n";
+        return;
+    }
+
+    customerID = getValidInt("Enter Customer ID: ");
+
+    cout << "Enter Customer Name: ";
+    getline(cin, name);
+
+    cout << "Enter Phone Number: ";
+    getline(cin, phone);
+
+    Customer c(customerID, name, phone);
+    accounts.push_back(Account(accNo, c, 0));
+
+    saveData(accounts);
+
+    cout << "Account created successfully.\n";
+}
+
+void depositMoney(vector<Account> &accounts) {
+    int accNo = getValidInt("Enter Account Number: ");
+    Account *acc = findAccount(accounts, accNo);
+
+    if (acc == NULL) {
+        cout << "Account not found.\n";
+        return;
+    }
+
+    double amount = getValidDouble("Enter Deposit Amount: ");
+    acc->deposit(amount);
+    saveData(accounts);
+}
+
+void withdrawMoney(vector<Account> &accounts) {
+    int accNo = getValidInt("Enter Account Number: ");
+    Account *acc = findAccount(accounts, accNo);
+
+    if (acc == NULL) {
+        cout << "Account not found.\n";
+        return;
+    }
+
+    double amount = getValidDouble("Enter Withdrawal Amount: ");
+    acc->withdraw(amount);
+    saveData(accounts);
+}
+
+void transferMoney(vector<Account> &accounts) {
+    int senderNo = getValidInt("Enter Sender Account Number: ");
+    int receiverNo = getValidInt("Enter Receiver Account Number: ");
+
+    Account *sender = findAccount(accounts, senderNo);
+    Account *receiver = findAccount(accounts, receiverNo);
+
+    if (sender == NULL || receiver == NULL) {
+        cout << "Sender or receiver account not found.\n";
+        return;
+    }
+
+    if (senderNo == receiverNo) {
+        cout << "Cannot transfer to the same account.\n";
+        return;
+    }
+
+    double amount = getValidDouble("Enter Transfer Amount: ");
+    sender->transfer(*receiver, amount);
+    saveData(accounts);
+}
+
+void viewAccount(vector<Account> &accounts) {
+    int accNo = getValidInt("Enter Account Number: ");
+    Account *acc = findAccount(accounts, accNo);
+
+    if (acc == NULL) {
+        cout << "Account not found.\n";
+        return;
+    }
+
+    acc->displayInfo();
+}
+
+void viewTransactions(vector<Account> &accounts) {
+    int accNo = getValidInt("Enter Account Number: ");
+    Account *acc = findAccount(accounts, accNo);
+
+    if (acc == NULL) {
+        cout << "Account not found.\n";
+        return;
+    }
+
+    acc->displayTransactions();
+}
+
+void viewAllAccounts(vector<Account> &accounts) {
+    cout << "\n========== ALL ACCOUNTS ==========\n";
+
+    if (accounts.empty()) {
+        cout << "No accounts available.\n";
+        return;
+    }
+
+    for (int i = 0; i < accounts.size(); i++) {
+        accounts[i].displayInfo();
+    }
+}
+
+int main() {
+    vector<Account> accounts;
+    loadData(accounts);
+
+    int choice;
+
+    do {
+        cout << "\n==========================================\n";
+        cout << "         BANKING SYSTEM\n";
+        cout << "==========================================\n";
+        cout << "1. Create Account\n";
+        cout << "2. Deposit Money\n";
+        cout << "3. Withdraw Money\n";
+        cout << "4. Transfer Funds\n";
+        cout << "5. View Account Information\n";
+        cout << "6. View Transaction History\n";
+        cout << "7. View All Accounts\n";
+        cout << "8. Exit\n";
+
+        choice = getValidInt("Enter your choice: ");
+
+        switch (choice) {
+        case 1:
+            createAccount(accounts);
+            break;
+
+        case 2:
+            depositMoney(accounts);
+            break;
+
+        case 3:
+            withdrawMoney(accounts);
+            break;
+
+        case 4:
+            transferMoney(accounts);
+            break;
+
+        case 5:
+            viewAccount(accounts);
+            break;
+
+        case 6:
+            viewTransactions(accounts);
+            break;
+
+        case 7:
+            viewAllAccounts(accounts);
+            break;
+
+        case 8:
+            saveData(accounts);
+            cout << "Thank you for using the Banking System.\n";
+            break;
+
+        default:
+            cout << "Invalid choice! Please enter between 1 and 8.\n";
+        }
+
+    } while (choice != 8);
+
+    return 0;
+}
